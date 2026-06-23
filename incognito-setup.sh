@@ -6,13 +6,14 @@
 RED='\033[1;31m'
 YELLOW='\033[1;33m'
 GREEN='\033[1;32m'
+CYAN='\033[1;36m'
 NC='\033[0m'
 
 INCOGNITO_API_URL="http://44.221.239.231:8080"
 MENU_URL="https://raw.githubusercontent.com/elbuhonerodev/incognito/main/incognito-menu.sh"
 BASE_DIR="/etc/incognito"
 
-LINE="====================================================="
+LINE="${RED}=====================================================${NC}"
 
 OS_NAME=$(grep -w "PRETTY_NAME" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' | head -c 30)
 [[ -z "$OS_NAME" ]] && OS_NAME="Linux"
@@ -21,20 +22,20 @@ OS_NAME=$(grep -w "PRETTY_NAME" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -
 # PANTALLA 1: BIENVENIDA / ACTUALIZACION
 # ==================================================
 clear
-echo "$LINE"
-echo "            INSTALADOR INCOGNITO"
-echo "$LINE"
-echo "  A continuacion se actualizaran los paquetes"
-echo "  del systema. Esto podria tomar tiempo,"
-echo "  y requerir algunas preguntas"
-echo "  propias de las actualizaciones."
-echo "$LINE"
-echo -n "  Desea continuar? [S/N]: "
+echo -e "$LINE"
+echo -e "${YELLOW}           INSTALADOR INCOGNITO${NC}"
+echo -e "$LINE"
+echo -e "${YELLOW}  A continuacion se actualizaran los paquetes${NC}"
+echo -e "${YELLOW}  del systema. Esto podria tomar tiempo,${NC}"
+echo -e "${YELLOW}  y requerir algunas preguntas${NC}"
+echo -e "${YELLOW}  propias de las actualizaciones.${NC}"
+echo -e "$LINE"
+echo -ne "${RED}  Desea continuar? [S/N]: ${NC}"
 read -n1 CONTINUAR
 echo ""
 
 if [[ "$CONTINUAR" != "S" && "$CONTINUAR" != "s" ]]; then
-    echo "  Cancelado."
+    echo -e "${RED}  Cancelado.${NC}"
     exit 0
 fi
 
@@ -51,24 +52,23 @@ fi
 # PANTALLA 2: ZONA HORARIA
 # ==================================================
 clear
-echo "$LINE"
-echo "            INSTALADOR INCOGNITO"
-echo "$LINE"
-echo "  Esto modificara la hora y fecha automatica"
-echo "  segun la Zona horaria establecida."
-echo "$LINE"
-echo -n "  Modificar la zona horaria? [S/N]: "
+echo -e "$LINE"
+echo -e "${YELLOW}           INSTALADOR INCOGNITO${NC}"
+echo -e "$LINE"
+echo -e "${YELLOW}  Esto modificara la hora y fecha automatica${NC}"
+echo -e "${YELLOW}  segun la Zona horaria establecida.${NC}"
+echo -e "$LINE"
+echo -ne "${RED}  Modificar la zona horaria? [S/N]: ${NC}"
 read -n1 MOD_TZ
 echo ""
 
 if [[ "$MOD_TZ" == "S" || "$MOD_TZ" == "s" ]]; then
-    echo ""
-    echo -n "  Ingrese zona (ej: America/Bogota): "
+    echo -ne "${CYAN}  Ingrese zona (ej: America/Bogota): ${NC}"
     read TZ_INPUT
     if [[ -n "$TZ_INPUT" ]]; then
         timedatectl set-timezone "$TZ_INPUT" 2>/dev/null && \
-        echo "  Zona horaria cambiada a: $TZ_INPUT" || \
-        echo "  Zona invalida, se mantiene la actual."
+        echo -e "${GREEN}  Zona horaria cambiada a: $TZ_INPUT${NC}" || \
+        echo -e "${RED}  Zona invalida, se mantiene la actual.${NC}"
         sleep 1
     fi
 fi
@@ -78,36 +78,39 @@ fi
 # ==================================================
 while true; do
     clear
-    echo "$LINE"
-    echo "         INSTALADOR DE LICENCIA INCOGNITO"
-    echo "$LINE"
-    echo "  [1] > INSTALAR LICENCIA"
-    echo "  [2] > DESINSTALAR SCRIPT"
-    echo "$LINE"
-    echo "  [0] > CANCELAR"
-    echo "$LINE"
-    echo -n "  Selecciona tu opcion: "
+    echo -e "$LINE"
+    echo -e "${YELLOW}         INSTALADOR DE LICENCIA INCOGNITO${NC}"
+    echo -e "$LINE"
+    echo -e "  ${RED}[1]${NC} > ${YELLOW}INSTALAR LICENCIA${NC}"
+    echo -e "  ${RED}[2]${NC} > ${YELLOW}DESINSTALAR SCRIPT${NC}"
+    echo -e "$LINE"
+    echo -e "  ${RED}[0]${NC} > ${RED}CANCELAR${NC}"
+    echo -e "$LINE"
+    echo -ne "  Selecciona tu opcion: "
     read OPCION
 
     case $OPCION in
         1)
             clear
-            echo "$LINE"
-            echo "         INSTALADOR DE LICENCIA INCOGNITO"
-            echo "$LINE"
-            echo -n "  Introduce tu KEY INCOGNITO: "
+            echo -e "$LINE"
+            echo -e "${YELLOW}         INSTALADOR DE LICENCIA INCOGNITO${NC}"
+            echo -e "$LINE"
+            echo -ne "  Introduce tu KEY INCOGNITO: "
             read USER_KEY
             USER_KEY=$(echo "$USER_KEY" | tr -d '[:space:]')
             echo ""
-            echo "  Verificando licencia..."
+            echo -e "${CYAN}  Verificando licencia...${NC}"
 
-            RESPONSE=$(curl -s -L -k --connect-timeout 10 \
+            RESPONSE=$(curl -s -L -k --connect-timeout 10 --max-time 15 \
               -A "IncognitoClient/1.0" \
-              "${INCOGNITO_API_URL}/validar?key=${USER_KEY}&os=$(echo $OS_NAME | sed 's/ /%20/g')")
+              "${INCOGNITO_API_URL}/validar?key=${USER_KEY}&os=$(echo $OS_NAME | sed 's/ /%20/g')" 2>&1)
+
+            # Debug: mostrar respuesta cruda para diagnostico
+            echo -e "${CYAN}  [DEBUG] Respuesta del servidor: '${RESPONSE}'${NC}"
+            echo ""
 
             if [[ "$RESPONSE" == *"AUTORIZADO"* ]]; then
-                echo ""
-                echo "  [OK] LICENCIA VALIDA. Iniciando instalacion..."
+                echo -e "${GREEN}  [OK] LICENCIA VALIDA. Iniciando instalacion...${NC}"
                 sleep 1
 
                 if [[ -f /etc/redhat-release ]]; then
@@ -118,7 +121,6 @@ while true; do
 
                 mkdir -p $BASE_DIR/bin $BASE_DIR/users
 
-                # Optimizar red TCP BBR
                 grep -q "incognito_bbr" /etc/sysctl.conf || cat <<EOF >> /etc/sysctl.conf
 # incognito_bbr
 net.core.default_qdisc = fq
@@ -130,7 +132,6 @@ net.ipv4.tcp_slow_start_after_idle = 0
 EOF
                 sysctl -p >/dev/null 2>&1
 
-                # WebSocket Proxy Puerto 80 -> 22
                 systemctl stop nginx apache2 httpd ws-incognito >/dev/null 2>&1
                 fuser -k 80/tcp >/dev/null 2>&1
                 sleep 1
@@ -181,41 +182,29 @@ EOF
                 systemctl enable ws-incognito >/dev/null 2>&1
                 systemctl restart ws-incognito
 
-                # Instalar menu
                 wget -q -O /usr/local/bin/incognito "$MENU_URL"
                 chmod +x /usr/local/bin/incognito
 
-                # Banner
-                echo "  ___ _   _  ____ ___   ___  _   _ ___ _____ ___" > /etc/motd
-                echo " |_ _| \ | |/ ___/ _ \ / _ \| \ | |_ _|_   _/ _ \\" >> /etc/motd
-                echo "  | ||  \| | |  | | | | | | |  \| || |  | || | | |" >> /etc/motd
-
                 clear
-                echo "$LINE"
-                echo "           INSTALACION COMPLETADA"
-                echo "           INCOGNITO VPN MANAGER"
-                echo "$LINE"
-                echo "  Escribe 'incognito' para entrar al panel"
-                echo "$LINE"
+                echo -e "$LINE"
+                echo -e "${GREEN}           INSTALACION COMPLETADA${NC}"
+                echo -e "${GREEN}           INCOGNITO VPN MANAGER${NC}"
+                echo -e "$LINE"
+                echo -e "  Escribe ${YELLOW}'incognito'${NC} para entrar al panel"
+                echo -e "$LINE"
                 for i in {5..1}; do
-                    echo -ne "    \r    [!] Reiniciando en: $i "
+                    echo -ne "    \r    ${RED}[!]${NC} Reiniciando en: ${RED}$i${NC} "
                     sleep 1
                 done
                 reboot
             else
-                echo ""
-                echo "  [ERROR] LICENCIA INVALIDA O EXPIRADA."
-                if [[ -n "$RESPONSE" ]]; then
-                    echo "  Respuesta: $RESPONSE"
-                else
-                    echo "  No se pudo contactar al servidor. Verifica tu conexion."
-                fi
+                echo -e "${RED}  [ERROR] LICENCIA INVALIDA O EXPIRADA.${NC}"
                 echo ""
                 read -p "  Presiona Enter para volver..."
             fi
             ;;
         2)
-            echo -n "  Escribe 'BORRAR' para confirmar: "
+            echo -ne "${RED}  Escribe 'BORRAR' para confirmar: ${NC}"
             read CONF
             if [[ "$CONF" == "BORRAR" ]]; then
                 systemctl stop ws-incognito >/dev/null 2>&1
@@ -223,12 +212,12 @@ EOF
                 rm -f /etc/systemd/system/ws-incognito.service
                 rm -rf $BASE_DIR
                 rm -f /usr/local/bin/incognito
-                echo "  Script desinstalado correctamente."
+                echo -e "${GREEN}  Script desinstalado correctamente.${NC}"
                 sleep 2
                 exit 0
             fi
             ;;
         0) exit 0 ;;
-        *) echo "  Opcion invalida"; sleep 1 ;;
+        *) echo -e "${RED}  Opcion invalida${NC}"; sleep 1 ;;
     esac
 done
