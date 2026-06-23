@@ -114,9 +114,11 @@ while true; do
                 sleep 1
 
                 if [[ -f /etc/redhat-release ]]; then
-                    yum install -y curl jq bc wget net-tools python3 python3-pip psmisc nano git socat cronie iptables-services unzip zip openssl lsof >/dev/null 2>&1
+                    yum install -y epel-release >/dev/null 2>&1
+                    yum install -y curl jq bc wget net-tools python3 python3-pip psmisc nano git socat cronie iptables-services unzip zip bind-utils openssl lsof certbot >/dev/null 2>&1
                 else
-                    apt-get install -y curl jq bc wget net-tools python3 python3-pip psmisc nano git socat cron iptables-persistent netfilter-persistent dnsutils zip unzip openssl lsof >/dev/null 2>&1
+                    export DEBIAN_FRONTEND=noninteractive
+                    apt-get install -y curl jq bc wget net-tools python3 python3-pip psmisc nano git socat cron iptables-persistent netfilter-persistent dnsutils zip unzip openssl certbot zram-tools lsof >/dev/null 2>&1
                 fi
 
                 mkdir -p $BASE_DIR/bin $BASE_DIR/users
