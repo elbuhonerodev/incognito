@@ -24,7 +24,7 @@ type KeyRecord struct {
 	KeyHash      string    `json:"key_hash"`
 	CreatedBy    int64     `json:"creada_por"`
 	Status       string    `json:"estado"`
-	ExpiresAt    time.Time `json:"expira_en"`
+	ExpiresAt    string    `json:"expira_en"`
 	VpsIP        string    `json:"vps_ip"`
 }
 
@@ -126,7 +126,7 @@ func saveKeyToSupabase(keyHash string, userID int64) error {
 		KeyHash:   keyHash,
 		CreatedBy: userID,
 		Status:    "DISPONIBLE",
-		ExpiresAt: time.Now().Add(4 * time.Hour),
+		ExpiresAt: time.Now().UTC().Add(4 * time.Hour).Format(time.RFC3339),
 	}
 
 	var results []KeyRecord
@@ -161,7 +161,9 @@ func startWebServer(bot *tgbotapi.BotAPI) {
 			return
 		}
 
-		if keyRecord.Status == "DISPONIBLE" && time.Now().Before(keyRecord.ExpiresAt) {
+		expTime, _ := time.Parse("2006-01-02T15:04:05", strings.Split(keyRecord.ExpiresAt, ".")[0])
+		
+		if keyRecord.Status == "DISPONIBLE" && time.Now().UTC().Before(expTime) {
 			// Marcar como usada
 			updateData := map[string]interface{}{
 				"estado": "USADA",
