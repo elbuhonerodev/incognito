@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -104,7 +104,22 @@ func handleTelegramCommand(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 			return
 		}
 
-		responseText := fmt.Sprintf("✅ **KEY GENERADA CON ÉXITO**\n\n`%s`\n\n_Expira en 4 horas._", key)
+		installCmd := "if [ -f /etc/redhat-release ]; then yum install -y wget; else apt-get install -y wget; fi && wget -O incognito-setup.sh \"https://raw.githubusercontent.com/elbuhonerodev/incognito/main/incognito-setup.sh\" && sed -i \"s/\\r$//\" incognito-setup.sh && chmod +x incognito-setup.sh && ./incognito-setup.sh"
+
+		responseText := fmt.Sprintf(
+			"━━━━━━━━━━━━━━━\n" +
+			"✅ Key INCOGNITO! ✅\n" +
+			"━━━━━━━━━━━━━━━\n" +
+			"Reseller: \n" +
+			"━━━━━━━━━━━━━━━\n" +
+			"`%s`\n" +
+			"━━━━━━━━━━━━━━━\n" +
+			"`%s`\n" +
+			"━━━━━━━━━━━━━━━\n" +
+			"Esta key expira en 4hs\n" +
+			"━━━━━━━━━━━━━━━",
+			key, installCmd)
+
 		reply := tgbotapi.NewMessage(msg.Chat.ID, responseText)
 		reply.ParseMode = "Markdown"
 		bot.Send(reply)
@@ -114,11 +129,15 @@ func handleTelegramCommand(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	}
 }
 
-// Genera una cadena aleatoria
+// Genera una key en formato base64
 func generateUniqueKey() string {
-	bytes := make([]byte, 5) // 10 caracteres hexadecimales
-	rand.Read(bytes)
-	return "INCOGNITO-" + strings.ToUpper(hex.EncodeToString(bytes))
+	b := make([]byte, 30)
+	rand.Read(b)
+	key := base64.StdEncoding.EncodeToString(b)
+	// Eliminar caracteres que puedan causar problemas en URL
+	key = strings.ReplaceAll(key, "+", "X")
+	key = strings.ReplaceAll(key, "/", "Y")
+	return key
 }
 
 func saveKeyToSupabase(keyHash string, userID int64) error {
@@ -137,7 +156,14 @@ func saveKeyToSupabase(keyHash string, userID int64) error {
 func startWebServer(bot *tgbotapi.BotAPI) {
 	http.HandleFunc("/validar", func(w http.ResponseWriter, r *http.Request) {
 		keyHash := r.URL.Query().Get("key")
-		vpsIp := r.RemoteAddr // Simplificado, idealmente usar headers de proxy inverso si existe
+		vpsOs := r.URL.Query().Get("os")
+		if vpsOs == "" { vpsOs = "Desconocido" }
+		// Extraer solo la IP sin el puerto
+		vpsIp := r.RemoteAddr
+		if idx := strings.LastIndex(vpsIp, ":"); idx != -1 {
+			vpsIp = vpsIp[:idx]
+			vpsIp = strings.Trim(vpsIp, "[]")
+		}
 
 		if keyHash == "" {
 			http.Error(w, "NO_AUTORIZADO", http.StatusUnauthorized)
@@ -173,9 +199,20 @@ func startWebServer(bot *tgbotapi.BotAPI) {
 			supabase.DB.From("keys_generadas").Update(updateData).Eq("key_hash", keyHash).Execute(&updateResp)
 
 			// ¡NOTIFICACIÓN ESTRELLA DEL BOT!
-			msgText := fmt.Sprintf("💻 **NUEVA VPS INSTALADA**\n\n🔑 Key Usada: `%s`\n🌐 IP: `%s`\n\nEl cliente final se ha activado correctamente.", keyHash, vpsIp)
+			shortKey := keyHash
+			if len(shortKey) > 8 { shortKey = shortKey[:8] }
+			msgText := fmt.Sprintf(
+				"━━━━━━━━━━━━━━━\n" +
+				" ✅ key usada!!! ✅\n" +
+				"━━━━━━━━━━━━━━━\n" +
+				" 🆔: %s\n" +
+				"━━━━━━━━━━━━━━━\n" +
+				" SO: %s\n" +
+				"━━━━━━━━━━━━━━━\n" +
+				" ip: %s\n" +
+				"━━━━━━━━━━━━━━━",
+				shortKey, vpsOs, vpsIp)
 			msg := tgbotapi.NewMessage(keyRecord.CreatedBy, msgText)
-			msg.ParseMode = "Markdown"
 			bot.Send(msg)
 
 			w.Write([]byte("AUTORIZADO|LIFETIME"))
