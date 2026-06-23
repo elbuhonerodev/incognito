@@ -190,13 +190,10 @@ EOF
                 echo -e "${GREEN}           INSTALACION COMPLETADA${NC}"
                 echo -e "${GREEN}           INCOGNITO VPN MANAGER${NC}"
                 echo -e "$LINE"
-                echo -e "  Escribe ${YELLOW}'incognito'${NC} para entrar al panel"
+                echo -e "  Abriendo panel INCOGNITO..."
                 echo -e "$LINE"
-                for i in {5..1}; do
-                    echo -ne "    \r    ${RED}[!]${NC} Reiniciando en: ${RED}$i${NC} "
-                    sleep 1
-                done
-                reboot
+                sleep 2
+                exec /usr/local/bin/incognito
             else
                 echo -e "${RED}  [ERROR] LICENCIA INVALIDA O EXPIRADA.${NC}"
                 echo ""
